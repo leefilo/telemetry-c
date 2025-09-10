@@ -2,7 +2,7 @@
 
 This project started as a way to practice services provided by AWS while also building something tangible end-to-end. The reason I chose the idea of a telemetry sim was because of my interest in cars and the engineering behind them. The app is written in C, exposes a tiny HTTP API, and is deployed to AWS on a single EC2 instance.
 
-As of now, the application will load a set of example sensors and serves them over HTTP with /health and /sensors. It’s intentionally small and easy to run so the focus is on the pipeline and architecture, not the complexity of the simulation.
+As of now, the application will load a set of example sensors and serves them over HTTP with /health and /sensors. It’s small and easy to run so a lot of the focus is on the pipeline and architecture.
 
 This repo is open source and welcome to evolve. 
 
