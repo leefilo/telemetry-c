@@ -1,0 +1,24 @@
+sensors:
+  - id: rpm
+    unit: rev/min
+    min: 800
+    max: 7000
+    period_ms: 500
+
+  - id: temp
+    unit: C
+    min: 70
+    max: 120
+    period_ms: 1000
+
+  - id: speed
+    unit: km/h
+    min: 0
+    max: 240
+    period_ms: 300
+
+  - id: fuel
+    unit: '%'
+    min: 0
+    max: 100
+    period_ms: 1000
