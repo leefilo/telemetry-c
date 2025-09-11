@@ -1,0 +1,34 @@
+name: ci
+on:
+  push:
+  pull_request:
+
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libyaml-dev pkg-config curl
+
+      - name: Build (release flags)
+        run: |
+          cc -std=c11 -Wall -Wextra -O2 -Iinclude \
+            -DAPP_VERSION="\"${GITHUB_SHA::7}\"" \
+            src/main.c src/config.c src/server.c \
+            -o telemetry $(pkg-config --cflags --libs yaml-0.1)
+
+      - name: Smoke test (start server and curl endpoints)
+        run: |
+          set -euo pipefail
+          ./telemetry config/sensors.yaml & pid=$!
+          sleep 0.3
+          curl -sSf -4 http://127.0.0.1:8080/health >/dev/null
+          curl -sSf -4 http://127.0.0.1:8080/sensors >/dev/null
+          kill "$pid" || true
+          wait "$pid" 2>/dev/null || true
