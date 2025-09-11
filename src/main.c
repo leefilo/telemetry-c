@@ -6,6 +6,11 @@
 #include "sensors.h"
 #include "server.h"
 
+#ifndef APP_VERSION
+#define APP_VERSION "dev"
+#endif
+
+
 static void dump_sensor_to_fd(int fd, const sensor_cfg_t *s) {
     dprintf(fd, "id=%s, unit=%s, min=%.2f, max=%.2f, period_ms=%u\n",
             s->id ? s->id : "",
@@ -45,6 +50,17 @@ static void router(int client_fd, const char *req, void *user_data) {
         }
         return;
     }
+
+    if (starts_with(req, "GET /version")) {
+        dprintf(client_fd,
+                "HTTP/1.1 200 OK\r\n"
+                "Content-Type: text/plain; charset=utf-8\r\n"
+                "Connection: close\r\n"
+                "\r\n"
+            APP_VERSION "\n");
+        return;
+    }
+
 
     dprintf(client_fd,
             "HTTP/1.1 404 Not Found\r\n"
