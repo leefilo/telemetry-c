@@ -6,7 +6,6 @@ on:
 jobs:
   build-and-smoke:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,3 +31,47 @@ jobs:
           curl -sSf -4 http://127.0.0.1:8080/sensors >/dev/null
           kill "$pid" || true
           wait "$pid" 2>/dev/null || true
+
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: build-and-smoke
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH and deploy on EC2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          # passphrase: ${{ secrets.SSH_PASSPHRASE }}   # ← only if you set one when creating the key
+          script_stop: true
+          script: |
+            set -euo pipefail
+            # 1) Get repo at the exact commit that triggered this run
+            if [ ! -d "$HOME/telemetry-c/.git" ]; then
+              git clone https://github.com/${{ github.repository }} "$HOME/telemetry-c"
+            fi
+            cd "$HOME/telemetry-c"
+            git fetch --all --prune
+            git reset --hard ${{ github.sha }}
+
+            # 2) Ensure build deps on EC2
+            sudo dnf -y install gcc pkgconfig libyaml-devel || true
+
+            # 3) Embed the short SHA from THIS workflow run
+            SHORT_SHA=${{ github.sha }}; SHORT_SHA=${SHORT_SHA:0:7}
+
+            # 4) Build on EC2 (Linux ELF)
+            cc -std=c11 -Wall -Wextra -O2 -Iinclude \
+               -DAPP_VERSION="\"$SHORT_SHA\"" \
+               src/main.c src/config.c src/server.c \
+               -o telemetry $(pkg-config --cflags --libs yaml-0.1)
+
+            # 5) Atomically install & restart the service
+            sudo install -m 0755 telemetry /opt/telemetry/telemetry
+            sudo systemctl restart telemetry
+
+            # 6) Self-check: print what we deployed and what the service reports
+            echo "Deployed SHORT_SHA=$SHORT_SHA"
+            echo -n "Service /version: "
+            curl -sS -4 http://127.0.0.1:8080/version || true
